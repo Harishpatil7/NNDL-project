@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Neural Speech Denoising Studio | 2D U-Net</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Ambient background glow elements -->
+  <div class="ambient-glow glow-1"></div>
+  <div class="ambient-glow glow-2"></div>
+
+  <div class="app-container">
+    <!-- Header -->
+    <header class="studio-header">
+      <div class="logo-group">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2v20M17 5v14M7 5v14M22 10v4M2 10v4" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="logo-title">NeuralClear <span class="badge-tag">AI Speech Denoising</span></h1>
+          <p class="logo-subtitle">Deep Learning Noise Suppression via Spectrogram 2D U-Net & Spectral Masking</p>
+        </div>
+      </div>
+
+      <div class="header-badges">
+        <div class="spec-pill">
+          <span class="dot"></span>
+          <span>16 kHz STFT</span>
+        </div>
+        <div class="spec-pill">
+          <span class="icon">⚡</span>
+          <span>20.2M Params</span>
+        </div>
+        <div class="spec-pill highlight">
+          <span class="icon">✨</span>
+          <span>Ideal Ratio Mask</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Workspace Grid -->
+    <main class="studio-grid">
+      <!-- Left Panel: Input & Control Console -->
+      <section class="panel control-panel">
+        <div class="panel-header">
+          <h2 class="panel-title">1. Noise Scenario & Audio Source</h2>
+          <span class="panel-hint">Select a preset or upload your own audio</span>
+        </div>
+
+        <!-- Mode Tabs -->
+        <div class="tab-switcher">
+          <button class="tab-btn active" id="tabPresetsBtn">Preset Scenarios</button>
+          <button class="tab-btn" id="tabUploadBtn">Upload Custom Audio</button>
+        </div>
+
+        <!-- Presets View -->
+        <div id="presetsContainer" class="tab-content active">
+          <div class="presets-grid" id="presetsList">
+            <!-- Dynamically populated or fallback presets -->
+            <div class="preset-card active" data-preset="traffic">
+              <div class="preset-header">
+                <span class="preset-icon">🚗</span>
+                <span class="preset-title">Traffic & Highway Noise</span>
+              </div>
+              <p class="preset-desc">Low-frequency road friction, engine drone & Doppler vehicle sweeps.</p>
+              <div class="preset-tag">Heavy Urban Noise</div>
+            </div>
+
+            <div class="preset-card" data-preset="fan">
+              <div class="preset-header">
+                <span class="preset-icon">💨</span>
+                <span class="preset-title">Electric Fan & Motor</span>
+              </div>
+              <p class="preset-desc">Stationary 60/120 Hz electrical hum + continuous blade air turbulence.</p>
+              <div class="preset-tag">Stationary Drone</div>
+            </div>
+
+            <div class="preset-card" data-preset="babble">
+              <div class="preset-header">
+                <span class="preset-icon">👥</span>
+                <span class="preset-title">Crowd & Babble Speech</span>
+              </div>
+              <p class="preset-desc">Cocktail party effect with overlapping voices and ambient room chatter.</p>
+              <div class="preset-tag">Dynamic Babble</div>
+            </div>
+          </div>
+
+          <!-- SNR Tuning Slider -->
+          <div class="control-group">
+            <div class="control-label-row">
+              <label for="snrSlider">Signal-to-Noise Ratio (SNR):</label>
+              <span class="val-badge" id="snrDisplay">+3.0 dB</span>
+            </div>
+            <input type="range" id="snrSlider" min="-5" max="15" step="1" value="3" class="custom-slider">
+            <div class="slider-ticks">
+              <span>-5 dB (Extreme Noise)</span>
+              <span>0 dB</span>
+              <span>+5 dB</span>
+              <span>+15 dB (Mild)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Upload View -->
+        <div id="uploadContainer" class="tab-content">
+          <div class="dropzone" id="audioDropzone">
+            <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <p class="dropzone-text"><strong>Click to upload</strong> or drag & drop audio</p>
+            <p class="dropzone-hint">WAV, MP3, FLAC, OGG (Max 20MB)</p>
+            <input type="file" id="fileInput" accept="audio/*" class="file-input-hidden">
+          </div>
+          <div id="uploadFileInfo" class="upload-file-info hidden">
+            <span class="file-icon">🎵</span>
+            <span id="uploadFileName" class="file-name">filename.wav</span>
+            <button id="clearFileBtn" class="clear-file-btn">✕</button>
+          </div>
+        </div>
+
+        <!-- Process Button -->
+        <button id="processBtn" class="primary-btn">
+          <span class="btn-spinner hidden" id="btnSpinner"></span>
+          <span class="btn-text" id="btnText">Execute Neural Denoising</span>
+        </button>
+
+        <!-- Pipeline Architecture Miniature -->
+        <div class="pipeline-card">
+          <div class="pipeline-header">
+            <span class="pipeline-title">Architecture Pipeline Flow</span>
+          </div>
+          <div class="pipeline-steps">
+            <div class="step-chip">Waveform</div>
+            <div class="step-arrow">→</div>
+            <div class="step-chip">STFT Mag (256)</div>
+            <div class="step-arrow">→</div>
+            <div class="step-chip highlight">2D U-Net + GRU</div>
+            <div class="step-arrow">→</div>
+            <div class="step-chip">Ratio Mask</div>
+            <div class="step-arrow">→</div>
+            <div class="step-chip">iSTFT</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Panel: Audio Studio, Live A/B, Metrics & Spectrograms -->
+      <section class="panel results-panel">
+        <div class="panel-header">
+          <h2 class="panel-title">2. Audio Studio & Spectral Inspection</h2>
+          <div class="quick-ab-group">
+            <button id="abToggleBtn" class="ab-toggle-btn" title="Toggle between Noisy and Denoised audio">
+              <span class="ab-indicator" id="abIndicator">Noisy</span>
+              <span class="ab-label">A/B Quick Switch</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Audio Channels Deck -->
+        <div class="audio-deck-grid">
+          <!-- Channel 1: Clean Reference -->
+          <div class="audio-channel-card" id="cleanAudioCard">
+            <div class="channel-header">
+              <span class="channel-dot clean-dot"></span>
+              <span class="channel-title">Clean Ground Truth</span>
+              <span class="channel-tag">Original</span>
+            </div>
+            <audio id="audioClean" controls preload="metadata"></audio>
+          </div>
+
+          <!-- Channel 2: Noisy Input -->
+          <div class="audio-channel-card active-card" id="noisyAudioCard">
+            <div class="channel-header">
+              <span class="channel-dot noisy-dot"></span>
+              <span class="channel-title">Noisy Input Signal</span>
+              <span class="channel-tag">Speech + Noise</span>
+            </div>
+            <audio id="audioNoisy" controls preload="metadata"></audio>
+          </div>
+
+          <!-- Channel 3: Denoised Output -->
+          <div class="audio-channel-card highlight-card" id="denoisedAudioCard">
+            <div class="channel-header">
+              <span class="channel-dot denoised-dot"></span>
+              <span class="channel-title">Neural Denoised Speech</span>
+              <span class="channel-tag pulse">Clean Output</span>
+            </div>
+            <audio id="audioDenoised" controls preload="metadata"></audio>
+          </div>
+        </div>
+
+        <!-- Metric Telemetry Ribbon -->
+        <div class="telemetry-bar">
+          <div class="telemetry-item">
+            <span class="tel-label">Input SNR</span>
+            <span class="tel-value" id="valNoisySnr">-- dB</span>
+          </div>
+          <div class="telemetry-divider"></div>
+          <div class="telemetry-item">
+            <span class="tel-label">Output SNR</span>
+            <span class="tel-value text-emerald" id="valDenoisedSnr">-- dB</span>
+          </div>
+          <div class="telemetry-divider"></div>
+          <div class="telemetry-item highlight-tel">
+            <span class="tel-label">SNR Improvement Gain</span>
+            <span class="tel-value tel-badge" id="valSnrGain">+0.0 dB</span>
+          </div>
+          <div class="telemetry-divider"></div>
+          <div class="telemetry-item">
+            <span class="tel-label">SI-SDR Gain</span>
+            <span class="tel-value" id="valSiSdr">-- dB</span>
+          </div>
+          <div class="telemetry-divider"></div>
+          <div class="telemetry-item">
+            <span class="tel-label">Model Status</span>
+            <span class="tel-status"><span class="status-dot"></span> Trained</span>
+          </div>
+        </div>
+
+        <!-- Spectrogram Gallery -->
+        <div class="spectrogram-section">
+          <div class="section-title-row">
+            <h3 class="section-subtitle">Acoustic Spectrogram Analysis</h3>
+            <span class="section-badge">Time-Frequency Representation (0 - 8 kHz)</span>
+          </div>
+
+          <div class="spectrogram-grid">
+            <!-- Spectrogram 1 -->
+            <div class="spec-card">
+              <div class="spec-header">
+                <span class="spec-number">1</span>
+                <span>Noisy Input Spectrogram (Magnitude dB)</span>
+              </div>
+              <div class="spec-img-box">
+                <img id="imgSpecNoisy" src="" alt="Noisy Spectrogram" class="spec-img">
+                <div class="spec-placeholder" id="placeholderNoisy">Click 'Execute Neural Denoising' to generate</div>
+              </div>
+            </div>
+
+            <!-- Spectrogram 2 -->
+            <div class="spec-card">
+              <div class="spec-header">
+                <span class="spec-number">2</span>
+                <span>U-Net Predicted Filter Mask M(f, t)</span>
+              </div>
+              <div class="spec-img-box">
+                <img id="imgSpecMask" src="" alt="Predicted Mask" class="spec-img">
+                <div class="spec-placeholder" id="placeholderMask">Mask ranges [0.0 = Silence, 1.0 = Speech]</div>
+              </div>
+            </div>
+
+            <!-- Spectrogram 3 -->
+            <div class="spec-card">
+              <div class="spec-header">
+                <span class="spec-number">3</span>
+                <span>Clean Denoised Spectrogram</span>
+              </div>
+              <div class="spec-img-box">
+                <img id="imgSpecDenoised" src="" alt="Denoised Spectrogram" class="spec-img">
+                <div class="spec-placeholder" id="placeholderDenoised">Clean speech harmonics restored</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="studio-footer">
+      <div>Neural Network Based Noise Removal for Speech &bull; Built with PyTorch & 2D U-Net</div>
+      <div class="footer-links">
+        <span>Short-Time Fourier Transform (STFT)</span> &bull;
+        <span>Ideal Ratio Masking (IRM)</span> &bull;
+        <span>Inverse STFT (iSTFT)</span>
+      </div>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

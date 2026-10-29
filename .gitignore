@@ -1,0 +1,28 @@
+# Python bytecode and cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+env/
+venv/
+.venv/
+ENV/
+
+# Model Checkpoints (weights > 100MB exceed GitHub file limit)
+checkpoints/*.pt
+checkpoints/*.pth
+checkpoints/*.ckpt
+!checkpoints/.gitkeep
+
+# Temporary uploaded files in web studio
+outputs/web_media/upload_*
+
+# System and IDE files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
